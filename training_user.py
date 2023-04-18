@@ -4,7 +4,6 @@ import struct
 import base64
 import json
 import tensorflow as tf
-import matplotlib.pyplot as plt
 import random
 import argparse
 import sys
