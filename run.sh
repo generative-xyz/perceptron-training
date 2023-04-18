@@ -1,0 +1,1 @@
+python3 training_user.py -c config.json -d data -o model.json

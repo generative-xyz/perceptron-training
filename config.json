@@ -1,0 +1,23 @@
+{
+  "model_name": "sample_model",
+  "input_dim": [
+    28,
+    28
+  ],
+  "structure": [
+    20,
+    10,
+    5
+  ],
+  "activation_name": "ReLU",
+  "val_percent": 10,
+  "batch_size": 64,
+  "epoch_num": 5,
+  "data_augmentation_config": {
+    "random_flip": "None",
+    "random_rotation": 0.2,
+    "random_zoom": 0.2,
+    "random_contrast": 0.2,
+    "random_brightness": 0.2
+  }
+}
