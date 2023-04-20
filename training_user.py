@@ -7,6 +7,8 @@ import tensorflow as tf
 import random
 import argparse
 import sys
+import shutil
+import traceback
 from pathlib import Path
 
 EPS = 1e-9
@@ -23,7 +25,31 @@ def get_classes_from_directory(directory):
       subdirs.append(subdir)
   return subdirs
 
+def remove_folder(folder_path):
+  try:
+    shutil.rmtree(folder_path)
+  except OSError:
+    pass
+
+def remove_file(file_path):
+  try:
+    os.remove(file_path)
+  except OSError:
+    pass
+
+def cleanup_dir(input_path):
+  remove_folder(os.path.join(input_path, '__MACOSX'))
+
+  for root, dirs, files in os.walk(input_path):
+    for file in files:
+      path = os.path.join(root, file)
+      _, extension = os.path.splitext(path)
+      if extension.upper() not in [ ".JPG", ".JPEG", ".PNG", ".GIF", ".BMP" ]:
+        remove_file(path)
+
 def read_dataset(input_path, input_dim, val_percent):
+  cleanup_dir(input_path)
+
   class_names = get_classes_from_directory(input_path)
 
   ds = tf.keras.utils.image_dataset_from_directory(
@@ -96,9 +122,9 @@ def get_activation_func(name):
     return leaky_relu
   if name == "Sigmoid":
     return tf.keras.activations.sigmoid
-  return tf.keras.activations.linear
+  sys.exit("Invalid activation function name")
 
-def get_model(input_dim, structure, activation_name):
+def get_model(input_dim, structure, activation_name, class_names):
   activation_func = get_activation_func(activation_name)
 
   model = tf.keras.Sequential()
@@ -112,7 +138,7 @@ def get_model(input_dim, structure, activation_name):
     model.add(tf.keras.layers.Dense(n_node, activation=activation_func))
   
   # Output layers
-  model.add(tf.keras.layers.Dense(4))
+  model.add(tf.keras.layers.Dense(len(class_names)))
 
   model.compile(optimizer='adam',
     loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
@@ -194,7 +220,11 @@ def write_to_file(file_path, content):
 
 
 def get_user_model(data_path, config_path, output_path):
-  config = json.loads(get_file_content(config_path))
+  try:
+    config = json.loads(get_file_content(config_path))
+  except:
+    traceback.print_exc()
+    sys.exit("Invalid config file")
 
   model_name = config["model_name"]
   input_dim = config["input_dim"]
@@ -205,32 +235,54 @@ def get_user_model(data_path, config_path, output_path):
   epoch_num = config["epoch_num"]
   data_augmentation_config = config["data_augmentation_config"]
 
-  init_train_ds, init_val_ds, class_names = read_dataset(data_path, input_dim, val_percent)
+  try:
+    init_train_ds, init_val_ds, class_names = read_dataset(data_path, input_dim, val_percent)
+  except:
+    traceback.print_exc()
+    sys.exit("Error reading dataset")
 
-  data_augmentation = get_data_augmentation(data_augmentation_config)
-  train_ds = prepare_dataset(init_train_ds, batch_size, data_augmentation)
-  val_ds = prepare_dataset(init_val_ds, batch_size)
+  try:
+    data_augmentation = get_data_augmentation(data_augmentation_config)
+    train_ds = prepare_dataset(init_train_ds, batch_size, data_augmentation)
+    val_ds = prepare_dataset(init_val_ds, batch_size)
+  except:
+    traceback.print_exc()
+    sys.exit("Error preparing dataset")
 
   tf.random.set_seed(random_seed)
   random.seed(random_seed)
 
-  model = get_model(input_dim, structure, activation_name)
-  train_model(model, epoch_num, train_ds, val_ds)
+  try:
+    model = get_model(input_dim, structure, activation_name, class_names)
+  except:
+    traceback.print_exc()
+    sys.exit("Error building model")
 
-  export_traits = get_traits_for_export(structure, activation_name, epoch_num)
-  weight_base64, compressed_config = get_model_for_export(model)
+  try:
+    train_model(model, epoch_num, train_ds, val_ds)
+  except:
+    traceback.print_exc()
+    sys.exit("Error training model")
 
-  inscription = {
-    "model_name": model_name,
-    "layers_config": compressed_config,
-    "weight_b64": weight_base64,
-    "training_traits": export_traits,
-    "classes_name": class_names
-  }
-  inscription_json = json.dumps(inscription)
+  try:
+    export_traits = get_traits_for_export(structure, activation_name, epoch_num)
+    weight_base64, compressed_config = get_model_for_export(model)
 
-  os.makedirs(name=str(Path(output_path).parent), exist_ok=True)
-  write_to_file(output_path, inscription_json)
+    inscription = {
+      "model_name": model_name,
+      "layers_config": compressed_config,
+      "weight_b64": weight_base64,
+      "training_traits": export_traits,
+      "classes_name": class_names
+    }
+    inscription_json = json.dumps(inscription)
+
+    os.makedirs(name=str(Path(output_path).parent), exist_ok=True)
+    write_to_file(output_path, inscription_json)
+  except:
+    traceback.print_exc()
+    sys.exit("Error exporting model")
+
 
 
 # Construct the argument parser
