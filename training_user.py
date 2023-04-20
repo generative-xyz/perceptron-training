@@ -11,6 +11,8 @@ import shutil
 import traceback
 from pathlib import Path
 
+tf.get_logger().setLevel('ERROR')
+
 EPS = 1e-9
 random_seed = 123
 shuffle_seed = 123
