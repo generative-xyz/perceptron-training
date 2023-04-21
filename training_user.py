@@ -11,6 +11,7 @@ import shutil
 import traceback
 from pathlib import Path
 
+tf.keras.utils.disable_interactive_logging()
 tf.get_logger().setLevel('ERROR')
 
 EPS = 1e-9
@@ -39,9 +40,18 @@ def remove_file(file_path):
   except OSError:
     pass
 
+def get_correct_subdirectory(path):
+  while True:
+    remove_folder(os.path.join(path, '__MACOSX'))
+    sub_dirs = [f.path for f in os.scandir(path) if f.is_dir()]
+    if len(sub_dirs) == 0:
+      sys.exit("Folder '{}' has no subdirectory".format(path))
+    elif len(sub_dirs) == 1:
+      path = sub_dirs[0]
+    else:
+      return path
+  
 def cleanup_dir(input_path):
-  remove_folder(os.path.join(input_path, '__MACOSX'))
-
   for root, dirs, files in os.walk(input_path):
     for file in files:
       path = os.path.join(root, file)
@@ -50,6 +60,7 @@ def cleanup_dir(input_path):
         remove_file(path)
 
 def read_dataset(input_path, input_dim, val_percent):
+  input_path = get_correct_subdirectory(input_path)
   cleanup_dir(input_path)
 
   class_names = get_classes_from_directory(input_path)
@@ -148,8 +159,16 @@ def get_model(input_dim, structure, activation_name, class_names):
 
   return model
 
+class CompactedLogCallback(tf.keras.callbacks.Callback):
+  def on_epoch_end(self, epoch, logs=None):
+    print("End epoch {}: loss={:.4f}, acc={:.4f}, val_loss={:.4f}, val_acc={:.4f}"
+      .format(epoch+1, logs["loss"], logs["accuracy"], logs["val_loss"], logs["val_accuracy"]))
+
 def train_model(model, epoch_num, train_ds, val_ds):
-  model.fit(train_ds, epochs=epoch_num, validation_data=val_ds)
+  model.fit(train_ds, 
+    epochs=epoch_num, 
+    validation_data=val_ds,
+    callbacks=[CompactedLogCallback()])
 
 def get_traits_for_export(structure, activation_name, epoch_num):
   export_traits = {
@@ -223,27 +242,30 @@ def write_to_file(file_path, content):
 
 def get_user_model(data_path, config_path, output_path):
   try:
+    print("Loading config...")
     config = json.loads(get_file_content(config_path))
+
+    model_name = config["model_name"]
+    input_dim = config["input_dim"]
+    structure = config["structure"]
+    activation_name = config["activation_name"]
+    val_percent = config["val_percent"]
+    batch_size = config["batch_size"]
+    epoch_num = config["epoch_num"]
+    data_augmentation_config = config["data_augmentation_config"]
   except:
     traceback.print_exc()
     sys.exit("Invalid config file")
 
-  model_name = config["model_name"]
-  input_dim = config["input_dim"]
-  structure = config["structure"]
-  activation_name = config["activation_name"]
-  val_percent = config["val_percent"]
-  batch_size = config["batch_size"]
-  epoch_num = config["epoch_num"]
-  data_augmentation_config = config["data_augmentation_config"]
-
   try:
+    print("Loading dataset...")
     init_train_ds, init_val_ds, class_names = read_dataset(data_path, input_dim, val_percent)
   except:
     traceback.print_exc()
     sys.exit("Error reading dataset")
 
   try:
+    print("Preparing dataset...")
     data_augmentation = get_data_augmentation(data_augmentation_config)
     train_ds = prepare_dataset(init_train_ds, batch_size, data_augmentation)
     val_ds = prepare_dataset(init_val_ds, batch_size)
@@ -251,22 +273,26 @@ def get_user_model(data_path, config_path, output_path):
     traceback.print_exc()
     sys.exit("Error preparing dataset")
 
-  tf.random.set_seed(random_seed)
-  random.seed(random_seed)
 
   try:
+    print("Building model...")
+    tf.random.set_seed(random_seed)
+    random.seed(random_seed)
     model = get_model(input_dim, structure, activation_name, class_names)
   except:
     traceback.print_exc()
     sys.exit("Error building model")
 
   try:
+    print("Training model...")
     train_model(model, epoch_num, train_ds, val_ds)
   except:
     traceback.print_exc()
     sys.exit("Error training model")
 
   try:
+    print("Exporting model...")
+
     export_traits = get_traits_for_export(structure, activation_name, epoch_num)
     weight_base64, compressed_config = get_model_for_export(model)
 
@@ -285,6 +311,7 @@ def get_user_model(data_path, config_path, output_path):
     traceback.print_exc()
     sys.exit("Error exporting model")
 
+  print("Finished")
 
 
 # Construct the argument parser
