@@ -52,6 +52,7 @@ def get_correct_subdirectory(path):
       return path
   
 def cleanup_dir(input_path):
+  remove_folder(os.path.join(input_path, '__MACOSX'))
   for root, dirs, files in os.walk(input_path):
     for file in files:
       path = os.path.join(root, file)
@@ -60,7 +61,7 @@ def cleanup_dir(input_path):
         remove_file(path)
 
 def read_dataset(input_path, input_dim, val_percent):
-  input_path = get_correct_subdirectory(input_path)
+  # input_path = get_correct_subdirectory(input_path)
   cleanup_dir(input_path)
 
   class_names = get_classes_from_directory(input_path)
