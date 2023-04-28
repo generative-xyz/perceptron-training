@@ -24,7 +24,7 @@ def get_subdirs(directory):
 
 def get_classes_from_directory(directory):
   class_names = []
-  for path in get_subdirs(directory):
+  for path in sorted(get_subdirs(directory)):
     while True:
       sub_dirs = get_subdirs(path)
       if len(sub_dirs) == 0:
@@ -32,7 +32,7 @@ def get_classes_from_directory(directory):
       path = sub_dirs[0]
     name = PurePath(path).name
     class_names.append(name)
-  return sorted(class_names)
+  return class_names
 
 def remove_folder(folder_path):
   try:
