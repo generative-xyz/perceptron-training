@@ -52,7 +52,8 @@ def get_correct_subdirectory(path):
       return path
   
 def cleanup_dir(input_path):
-  remove_folder(os.path.join(input_path, '__MACOSX'))
+  for root, dirs, files in os.walk(input_path):
+    remove_folder(os.path.join(root, '__MACOSX'))
   for root, dirs, files in os.walk(input_path):
     for file in files:
       path = os.path.join(root, file)
