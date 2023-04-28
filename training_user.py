@@ -9,7 +9,7 @@ import argparse
 import sys
 import shutil
 import traceback
-from pathlib import Path
+from pathlib import PurePath, Path
 
 tf.keras.utils.disable_interactive_logging()
 tf.get_logger().setLevel('ERROR')
@@ -19,14 +19,20 @@ random_seed = 123
 shuffle_seed = 123
 AUTOTUNE = tf.data.AUTOTUNE
 
+def get_subdirs(directory):
+  return [f.path for f in os.scandir(directory) if f.is_dir()]
+
 def get_classes_from_directory(directory):
-  subdirs = []
-  for subdir in sorted(tf.io.gfile.listdir(directory)):
-    if tf.io.gfile.isdir(tf.io.gfile.join(directory, subdir)):
-      if subdir.endswith("/"):
-        subdir = subdir[:-1]
-      subdirs.append(subdir)
-  return subdirs
+  class_names = []
+  for path in get_subdirs(directory):
+    while True:
+      sub_dirs = get_subdirs(path)
+      if len(sub_dirs) == 0:
+        break
+      path = sub_dirs[0]
+    name = PurePath(path).name
+    class_names.append(name)
+  return class_names
 
 def remove_folder(folder_path):
   try:
@@ -43,7 +49,7 @@ def remove_file(file_path):
 def get_correct_subdirectory(path):
   while True:
     remove_folder(os.path.join(path, '__MACOSX'))
-    sub_dirs = [f.path for f in os.scandir(path) if f.is_dir()]
+    sub_dirs = get_subdirs(path)
     if len(sub_dirs) == 0:
       sys.exit("Folder '{}' has no subdirectory".format(path))
     elif len(sub_dirs) == 1:
