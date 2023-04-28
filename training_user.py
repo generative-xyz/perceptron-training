@@ -32,7 +32,7 @@ def get_classes_from_directory(directory):
       path = sub_dirs[0]
     name = PurePath(path).name
     class_names.append(name)
-  return class_names
+  return sorted(class_names)
 
 def remove_folder(folder_path):
   try:
