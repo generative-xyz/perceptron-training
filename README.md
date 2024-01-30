@@ -36,7 +36,7 @@ For example, suppose that you are about to train a model that can classify three
 
 Config file format:
 
-```json
+```js
 {
   "model_name": string,
   "input_dim": [int],
