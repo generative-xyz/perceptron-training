@@ -85,7 +85,10 @@ def read_dataset(input_path, input_dim, val_percent):
     interpolation='bilinear',
   )
 
-  train_ds, val_ds = tf.keras.utils.split_dataset(ds, left_size=1-val_percent/100, shuffle=True, seed=shuffle_seed)
+  if val_percent > 0:
+    train_ds, val_ds = tf.keras.utils.split_dataset(ds, left_size=1-val_percent/100, shuffle=True, seed=shuffle_seed)
+  else:
+    train_ds, val_ds = ds, None
   
   return train_ds, val_ds, class_names
 
@@ -169,8 +172,12 @@ def get_model(input_dim, structure, activation_name, class_names):
 
 class CompactedLogCallback(tf.keras.callbacks.Callback):
   def on_epoch_end(self, epoch, logs=None):
-    print("End epoch {}: loss={:.4f}, acc={:.4f}, val_loss={:.4f}, val_acc={:.4f}"
-      .format(epoch+1, logs["loss"], logs["accuracy"], logs["val_loss"], logs["val_accuracy"]))
+    if "val_loss" in logs:
+      print("End epoch {}: loss={:.4f}, acc={:.4f}, val_loss={:.4f}, val_acc={:.4f}"
+        .format(epoch+1, logs["loss"], logs["accuracy"], logs["val_loss"], logs["val_accuracy"]))
+    else:
+      print("End epoch {}: loss={:.4f}, acc={:.4f}"
+        .format(epoch+1, logs["loss"], logs["accuracy"]))
 
 def train_model(model, epoch_num, train_ds, val_ds):
   model.fit(train_ds, 
@@ -276,7 +283,7 @@ def get_user_model(data_path, config_path, output_path):
     print("Preparing dataset...")
     data_augmentation = get_data_augmentation(data_augmentation_config)
     train_ds = prepare_dataset(init_train_ds, batch_size, data_augmentation)
-    val_ds = prepare_dataset(init_val_ds, batch_size)
+    val_ds = prepare_dataset(init_val_ds, batch_size) if init_val_ds else None
   except:
     traceback.print_exc()
     sys.exit("Error preparing dataset")
