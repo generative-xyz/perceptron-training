@@ -67,11 +67,14 @@ def cleanup_dir(input_path):
       if extension.upper() not in [ ".JPG", ".JPEG", ".PNG", ".GIF", ".BMP" ]:
         remove_file(path)
 
-def read_dataset(input_path, input_dim, val_percent):
+def read_dataset(input_path, input_dim, val_percent, class_name_mapping):
   # input_path = get_correct_subdirectory(input_path)
   cleanup_dir(input_path)
 
   class_names = get_classes_from_directory(input_path)
+  if class_name_mapping:
+    class_names = list(map(lambda x: class_name_mapping[x], class_names))
+  # print(class_names)
 
   ds = tf.keras.utils.image_dataset_from_directory(
     input_path,
@@ -268,13 +271,14 @@ def get_user_model(data_path, config_path, output_path):
     batch_size = config["batch_size"]
     epoch_num = config["epoch_num"]
     data_augmentation_config = config["data_augmentation_config"]
+    class_name_mapping = config.get("class_names", None)
   except:
     traceback.print_exc()
     sys.exit("Invalid config file")
 
   try:
     print("Loading dataset...")
-    init_train_ds, init_val_ds, class_names = read_dataset(data_path, input_dim, val_percent)
+    init_train_ds, init_val_ds, class_names = read_dataset(data_path, input_dim, val_percent, class_name_mapping)
   except:
     traceback.print_exc()
     sys.exit("Error reading dataset")
