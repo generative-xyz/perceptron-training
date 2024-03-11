@@ -1,23 +1,29 @@
 {
   "model_name": "sample_model",
   "input_dim": [
-    28,
-    28
+    32,
+    32
   ],
   "structure": [
     20,
-    10,
-    5
+    20,
+    20
   ],
   "activation_name": "ReLU",
   "val_percent": 10,
   "batch_size": 64,
-  "epoch_num": 5,
+  "epoch_num": 10,
   "data_augmentation_config": {
     "random_flip": "None",
-    "random_rotation": 0.2,
-    "random_zoom": 0.2,
-    "random_contrast": 0.2,
-    "random_brightness": 0.2
+    "random_rotation": 0,
+    "random_zoom": 0,
+    "random_contrast": 0,
+    "random_brightness": 0
+  },
+  "class_names": {
+    "cryptoadz": "Cryptoadz",
+    "cryptopunks": "Cryptopunks",
+    "moonbirds": "Moonbirds",
+    "nouns": "Nouns"
   }
 }
